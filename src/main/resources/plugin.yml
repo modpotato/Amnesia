@@ -1,0 +1,7 @@
+name: ${name}
+description: ${description}
+version: '${version}'
+main: top.modpotato.Amnesia.Main
+api-version: '1.21'
+folia-supported: true
+authors: [${author}]
