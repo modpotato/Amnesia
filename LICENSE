@@ -1,43 +1,43 @@
-**Amnesia - Public Source, All Rights Reserved License (Limited Use)**
+Amnesia - Public Source, All Rights Reserved License (Limited Use)
 
-**Copyright © 2025 ModPotato**
+Copyright © 2025 ModPotato
 
 All rights reserved.
 
-**1. Grant of License:**
+1. Grant of License:
 
 Subject to the terms and conditions set forth herein, ModPotato ("Licensor") hereby grants you ("Licensee") a limited, non-transferable, non-exclusive, and revocable license to download, use, and inspect the source code of Amnesia strictly for personal or server use. This license does not permit redistribution of the Plugin or any derivative works in any form.
 
-**2. Permitted Use:**
+2. Permitted Use:
 
 - You may download, view, and inspect the source code available on GitHub.
 - You may compile and use the Plugin on your personal instance or on a server that you operate.
 - You may modify the code solely for personal or server-related enhancements provided that such modifications are not redistributed.
 
-**3. Restrictions:**
+3. Restrictions:
 
-You are **NOT** permitted to:
-- **Redistribute:** Share, distribute, or otherwise make available the Plugin (in source or compiled form) to any third party, whether for free or for profit. This includes posting on websites, forums, Discord servers, or any other platform.
-- **Modify for Redistribution:** Modify, adapt, reverse engineer, decompile, or create derivative works based on the Plugin for the purpose of redistribution without explicit written permission from ModPotato.
-- **Claim Authorship:** Claim authorship or ownership of this Plugin or any portion thereof.
-- **Circumvent Technical Measures:** Bypass or otherwise interfere with technical measures that control access or modification of the Plugin.
+You are NOT permitted to:
+- Redistribute: Share, distribute, or otherwise make available the Plugin (in source or compiled form) to any third party, whether for free or for profit. This includes posting on websites, forums, Discord servers, or any other platform.
+- Modify for Redistribution: Modify, adapt, reverse engineer, decompile, or create derivative works based on the Plugin for the purpose of redistribution without explicit written permission from ModPotato.
+- Claim Authorship: Claim authorship or ownership of this Plugin or any portion thereof.
+- Circumvent Technical Measures: Bypass or otherwise interfere with technical measures that control access or modification of the Plugin.
 
-**4. Public Source Clarification:**
+4. Public Source Clarification:
 
 The source code is made publicly available on GitHub solely for the purposes of transparency, personal learning, and private modification. Public availability does not grant any rights to redistribute, commercialize, or claim derivative rights over the Plugin.
 
-**5. Disclaimer of Warranty:**
+5. Disclaimer of Warranty:
 
 THE PLUGIN IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE PLUGIN OR ITS USE.
 
-**6. Limitation of Liability:**
+6. Limitation of Liability:
 
 IN NO EVENT SHALL MODPOTATO BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE PLUGIN, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
-**7. Termination:**
+7. Termination:
 
 This license is effective until terminated. Licenses granted herein will automatically terminate if you breach any of the terms and conditions of this license. Upon termination, you must immediately cease all use of the Plugin and destroy any copies in your possession.
 
-**8. Contact:**
+8. Contact:
 
 For permissions, inquiries, or requests regarding this license, please contact: mod@modpotato.us.
