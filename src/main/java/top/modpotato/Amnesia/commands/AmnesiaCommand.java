@@ -106,11 +106,13 @@ public class AmnesiaCommand implements CommandExecutor, TabCompleter {
             
             if (subCommand.equals("enable")) {
                 plugin.getConfigManager().setTimerEnabled(true);
+                plugin.getConfigManager().saveConfig();
                 plugin.getTimerManager().startTimer();
                 sender.sendMessage("§aTimer enabled.");
                 return true;
             } else if (subCommand.equals("disable")) {
                 plugin.getConfigManager().setTimerEnabled(false);
+                plugin.getConfigManager().saveConfig();
                 plugin.getTimerManager().stopTimer();
                 sender.sendMessage("§aTimer disabled.");
                 return true;
@@ -123,6 +125,7 @@ public class AmnesiaCommand implements CommandExecutor, TabCompleter {
                     }
                     
                     plugin.getConfigManager().setTimerInterval(interval);
+                    plugin.getConfigManager().saveConfig();
                     
                     if (plugin.getTimerManager().isRunning()) {
                         plugin.getTimerManager().restartTimer(interval);
@@ -158,24 +161,32 @@ public class AmnesiaCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1 || args[1].equalsIgnoreCase("view")) {
             // Show current seed
             long seed = plugin.getConfigManager().getSeed();
-            sender.sendMessage("§aCurrent seed: §e" + seed);
+            boolean isUserSet = plugin.getConfigManager().isUserSetSeed();
+            sender.sendMessage("§aCurrent seed: §e" + seed + " §7(" + (isUserSet ? "user-set" : "random") + ")");
             return true;
         }
         
-        if (args.length >= 3 && args[1].equalsIgnoreCase("set")) {
-            try {
-                long seed = Long.parseLong(args[2]);
-                plugin.getConfigManager().setSeed(seed);
+        if (args.length >= 2) {
+            if (args[1].equalsIgnoreCase("set") && args.length >= 3) {
+                try {
+                    long seed = Long.parseLong(args[2]);
+                    plugin.getConfigManager().setSeed(seed, true); // Mark as user-set
+                    plugin.getConfigManager().saveConfig();
+                    sender.sendMessage("§aSeed set to §e" + seed + " §7(user-set)");
+                    return true;
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cInvalid seed. Please enter a number.");
+                    return true;
+                }
+            } else if (args[1].equalsIgnoreCase("random")) {
+                long seed = plugin.getConfigManager().generateRandomSeed();
                 plugin.getConfigManager().saveConfig();
-                sender.sendMessage("§aSeed set to §e" + seed);
-                return true;
-            } catch (NumberFormatException e) {
-                sender.sendMessage("§cInvalid seed. Please enter a number.");
+                sender.sendMessage("§aGenerated random seed: §e" + seed + " §7(random)");
                 return true;
             }
         }
         
-        sender.sendMessage("§cUsage: /amnesia seed [view|set <seed>]");
+        sender.sendMessage("§cUsage: /amnesia seed [view|set <seed>|random]");
         return true;
     }
     
@@ -212,7 +223,7 @@ public class AmnesiaCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§6=== Amnesia Commands ===");
         sender.sendMessage("§e/amnesia shuffle [mode] §7- Shuffle recipes");
         sender.sendMessage("§e/amnesia timer [enable|disable|interval <seconds>] §7- Manage timer");
-        sender.sendMessage("§e/amnesia seed [view|set <seed>] §7- Manage seed");
+        sender.sendMessage("§e/amnesia seed [view|set <seed>|random] §7- Manage seed");
         sender.sendMessage("§e/amnesia reload §7- Reload configuration");
     }
     
@@ -256,7 +267,7 @@ public class AmnesiaCommand implements CommandExecutor, TabCompleter {
                     break;
                 case "seed":
                     if (sender.hasPermission("amnesia.command.seed")) {
-                        return filterCompletions(Arrays.asList("view", "set"), args[1]);
+                        return filterCompletions(Arrays.asList("view", "set", "random"), args[1]);
                     }
                     break;
             }

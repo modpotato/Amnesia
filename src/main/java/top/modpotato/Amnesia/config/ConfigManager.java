@@ -25,6 +25,9 @@ public class ConfigManager {
     private boolean timerEnabled = false;
     private String clientSyncMode = "resync";
     private long seed;
+    private boolean userSetSeed = false; // Track if the seed was set by the user
+    private boolean isShuffled = false; // Track if recipes are currently shuffled
+    private long lastShuffleTime = 0; // Track when recipes were last shuffled
     private List<String> excludedRecipes = new ArrayList<>();
     private List<String> excludedRandomItems = new ArrayList<>();
     private List<Integer> notificationIntervals = Arrays.asList(300, 60, 30, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
@@ -63,7 +66,20 @@ public class ConfigManager {
         timerInterval = config.getInt("timer-interval", timerInterval);
         timerEnabled = config.getBoolean("timer-enabled", timerEnabled);
         clientSyncMode = config.getString("client-sync-mode", clientSyncMode);
-        seed = config.getLong("seed", seed);
+        
+        // Load seed and seed state
+        if (config.contains("seed")) {
+            seed = config.getLong("seed");
+            userSetSeed = config.getBoolean("user-set-seed", false);
+        } else {
+            seed = new Random().nextLong();
+            userSetSeed = false;
+        }
+        
+        // Load shuffle state
+        isShuffled = config.getBoolean("is-shuffled", false);
+        lastShuffleTime = config.getLong("last-shuffle-time", 0);
+        
         excludedRecipes = config.getStringList("excluded-recipes");
         excludedRandomItems = config.getStringList("excluded-random-items");
         
@@ -108,6 +124,9 @@ public class ConfigManager {
         config.set("timer-enabled", timerEnabled);
         config.set("client-sync-mode", clientSyncMode);
         config.set("seed", seed);
+        config.set("user-set-seed", userSetSeed);
+        config.set("is-shuffled", isShuffled);
+        config.set("last-shuffle-time", lastShuffleTime);
         config.set("excluded-recipes", excludedRecipes);
         config.set("excluded-random-items", excludedRandomItems);
         config.set("notification-intervals", notificationIntervals);
@@ -203,9 +222,56 @@ public class ConfigManager {
     /**
      * Sets the seed for recipe shuffling
      * @param seed the seed
+     * @param userSet whether the seed was set by the user
      */
-    public void setSeed(long seed) {
+    public void setSeed(long seed, boolean userSet) {
         this.seed = seed;
+        this.userSetSeed = userSet;
+    }
+    
+    /**
+     * Checks if the seed was set by the user
+     * @return true if the seed was set by the user, false if it was generated randomly
+     */
+    public boolean isUserSetSeed() {
+        return userSetSeed;
+    }
+    
+    /**
+     * Generates a new random seed
+     * @return the new seed
+     */
+    public long generateRandomSeed() {
+        this.seed = new Random().nextLong();
+        this.userSetSeed = false;
+        return this.seed;
+    }
+    
+    /**
+     * Checks if recipes are currently shuffled
+     * @return true if recipes are shuffled, false otherwise
+     */
+    public boolean isShuffled() {
+        return isShuffled;
+    }
+    
+    /**
+     * Sets whether recipes are currently shuffled
+     * @param shuffled true if recipes are shuffled, false otherwise
+     */
+    public void setShuffled(boolean shuffled) {
+        this.isShuffled = shuffled;
+        if (shuffled) {
+            this.lastShuffleTime = System.currentTimeMillis();
+        }
+    }
+    
+    /**
+     * Gets the time when recipes were last shuffled
+     * @return the last shuffle time in milliseconds since epoch
+     */
+    public long getLastShuffleTime() {
+        return lastShuffleTime;
     }
     
     /**

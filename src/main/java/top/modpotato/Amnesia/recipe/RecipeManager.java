@@ -34,7 +34,6 @@ public class RecipeManager {
     private final Main plugin;
     private final Map<NamespacedKey, Recipe> originalRecipes = new HashMap<>();
     private final Map<NamespacedKey, Recipe> shuffledRecipes = new HashMap<>();
-    private boolean isShuffled = false;
     
     /**
      * Creates a new RecipeManager
@@ -45,9 +44,29 @@ public class RecipeManager {
     }
     
     /**
+     * Initializes the recipe manager
+     * This should be called after the plugin is enabled
+     */
+    public void initialize() {
+        // Check if recipes were shuffled before restart
+        if (plugin.getConfigManager().isShuffled()) {
+            plugin.getLogger().info("Recipes were shuffled before restart, restoring shuffle state...");
+            shuffleRecipes(false); // Restore shuffle state without announcement
+        }
+    }
+    
+    /**
      * Shuffles recipes according to the configured mode
      */
     public void shuffleRecipes() {
+        shuffleRecipes(true); // Shuffle with announcement
+    }
+    
+    /**
+     * Shuffles recipes according to the configured mode
+     * @param announce whether to announce the shuffle
+     */
+    public void shuffleRecipes(boolean announce) {
         // Get the seed from config
         long seed = plugin.getConfigManager().getSeed();
         Random random = new Random(seed);
@@ -55,8 +74,10 @@ public class RecipeManager {
         // Get the shuffle mode from config
         String shuffleMode = plugin.getConfigManager().getShuffleMode();
         
-        // Announce shuffle start
-        MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleStarted);
+        // Announce shuffle start if needed
+        if (announce) {
+            MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleStarted);
+        }
         
         // Prepare recipe data asynchronously when possible
         CompletableFuture<Void> preparationFuture = CompletableFuture.runAsync(() -> {
@@ -72,11 +93,11 @@ public class RecipeManager {
             if (Main.isFolia()) {
                 // For Folia, we need to use the global region scheduler
                 Bukkit.getGlobalRegionScheduler().run(plugin, task -> {
-                    applyRecipeChanges();
+                    applyRecipeChanges(announce);
                 });
             } else {
                 // For Paper, we use the Bukkit scheduler
-                Bukkit.getScheduler().runTask(plugin, this::applyRecipeChanges);
+                Bukkit.getScheduler().runTask(plugin, () -> applyRecipeChanges(announce));
             }
         });
     }
@@ -129,8 +150,9 @@ public class RecipeManager {
     
     /**
      * Applies recipe changes on the main thread
+     * @param announce whether to announce the completion
      */
-    private void applyRecipeChanges() {
+    private void applyRecipeChanges(boolean announce) {
         try {
             // Remove all recipes from the server
             clearServerRecipes();
@@ -138,14 +160,20 @@ public class RecipeManager {
             // Register shuffled recipes
             registerShuffledRecipes();
             
-            // Set shuffled flag
-            isShuffled = true;
+            // Update shuffle state in config
+            plugin.getConfigManager().setShuffled(true);
+            plugin.getConfigManager().saveConfig();
             
             // Handle client recipe synchronization based on config
             syncClientRecipes();
             
-            // Announce shuffle completion
-            MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleFinished);
+            // Announce shuffle completion if needed
+            if (announce) {
+                MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleFinished);
+            }
+            
+            plugin.getLogger().info("Recipes shuffled successfully with seed: " + plugin.getConfigManager().getSeed() + 
+                    " (" + (plugin.getConfigManager().isUserSetSeed() ? "user-set" : "random") + ")");
         } catch (Exception e) {
             plugin.getLogger().severe("Error applying recipe changes: " + e.getMessage());
             e.printStackTrace();
@@ -412,7 +440,7 @@ public class RecipeManager {
      * Restores the original recipes
      */
     public void restoreOriginalRecipes() {
-        if (!isShuffled) {
+        if (!plugin.getConfigManager().isShuffled()) {
             return;
         }
         
@@ -439,8 +467,9 @@ public class RecipeManager {
                 // Clear shuffled recipes
                 shuffledRecipes.clear();
                 
-                // Reset shuffled flag
-                isShuffled = false;
+                // Update shuffle state in config
+                plugin.getConfigManager().setShuffled(false);
+                plugin.getConfigManager().saveConfig();
                 
                 plugin.getLogger().info("Restored " + originalRecipes.size() + " original recipes");
             } catch (Exception e) {
@@ -509,13 +538,5 @@ public class RecipeManager {
         }
         
         return null;
-    }
-    
-    /**
-     * Checks if recipes are currently shuffled
-     * @return true if recipes are shuffled, false otherwise
-     */
-    public boolean isShuffled() {
-        return isShuffled;
     }
 } 

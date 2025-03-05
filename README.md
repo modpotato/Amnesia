@@ -9,6 +9,7 @@ Amnesia is a highly configurable Minecraft plugin for PaperMC and Folia servers 
   - **Recipe Result Shuffle Mode:** Recipe outputs are shuffled amongst existing recipes.
 - **Timer-Based Reshuffling:** Automatic reshuffling of recipes at configurable intervals with countdown notifications.
 - **Seed-Based Rotations:** Ability to use seeds to generate and recall specific recipe shuffles.
+- **Cross-Restart Synchronization:** Recipe shuffle state and timer settings persist across server restarts.
 - **Client Recipe Synchronization:** Control how clients handle recipe changes with three different modes.
 - **Command-Line Interface:** Comprehensive commands for managing shuffling, timer, seed, and configuration.
 - **Configuration File:** YAML based configuration for persistent settings and customization.
@@ -19,7 +20,7 @@ Amnesia is a highly configurable Minecraft plugin for PaperMC and Folia servers 
 
 - `/amnesia shuffle [mode]` - Shuffles recipes using the specified mode (random_item or recipe_result).
 - `/amnesia timer [enable|disable|interval <seconds>]` - Manages the timer-based reshuffling.
-- `/amnesia seed [view|set <seed>]` - Manages the shuffle seed.
+- `/amnesia seed [view|set <seed>|random]` - Manages the shuffle seed.
 - `/amnesia reload` - Reloads the plugin configuration.
 
 ## Permissions
@@ -51,6 +52,15 @@ client-sync-mode: "resync"
 
 # The seed used for recipe shuffling
 # seed: 123456789
+
+# Whether the seed was set by the user (true) or generated randomly (false)
+# user-set-seed: false
+
+# Whether recipes are currently shuffled
+# is-shuffled: false
+
+# When recipes were last shuffled (milliseconds since epoch)
+# last-shuffle-time: 0
 
 # List of recipe keys to exclude from shuffling
 excluded-recipes:
@@ -85,7 +95,3 @@ notification-messages:
 ## Support
 
 If you encounter any issues or have suggestions, please open an issue on the GitHub repository.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.

@@ -37,9 +37,13 @@ public class Main extends JavaPlugin {
             // Register commands
             getCommand("amnesia").setExecutor(new AmnesiaCommand(this));
             
+            // Initialize recipe manager (restore shuffle state if needed)
+            recipeManager.initialize();
+            
             // Start timer if enabled in config
             if (configManager.isTimerEnabled()) {
                 timerManager.startTimer();
+                getLogger().info("Timer started with interval of " + configManager.getTimerInterval() + " seconds");
             }
             
             getLogger().info("Amnesia has been enabled!");
