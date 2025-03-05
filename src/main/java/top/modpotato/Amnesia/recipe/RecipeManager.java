@@ -56,35 +56,68 @@ public class RecipeManager {
         // Announce shuffle start
         MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleStarted);
         
-        // Store original recipes if not already stored
-        if (originalRecipes.isEmpty()) {
-            storeOriginalRecipes();
-        }
-        
-        // Clear existing shuffled recipes
-        shuffledRecipes.clear();
-        
-        // Remove all recipes from the server
-        clearServerRecipes();
-        
-        // Shuffle recipes based on mode
-        if (shuffleMode.equalsIgnoreCase("random_item")) {
-            shuffleRandomItem(random);
-        } else if (shuffleMode.equalsIgnoreCase("recipe_result")) {
-            shuffleRecipeResult(random);
+        // We need to run recipe manipulation on the main thread to avoid ConcurrentModificationException
+        if (Main.isFolia()) {
+            // For Folia, we need to use the global region scheduler
+            Bukkit.getGlobalRegionScheduler().run(plugin, task -> {
+                performRecipeShuffle(shuffleMode, random);
+            });
         } else {
-            plugin.getLogger().warning("Unknown shuffle mode: " + shuffleMode + ". Using random_item mode.");
-            shuffleRandomItem(random);
+            // For Paper, we use the Bukkit scheduler
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                performRecipeShuffle(shuffleMode, random);
+            });
         }
-        
-        // Register shuffled recipes
-        registerShuffledRecipes();
-        
-        // Set shuffled flag
-        isShuffled = true;
-        
-        // Announce shuffle completion
-        MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleFinished);
+    }
+    
+    /**
+     * Performs the actual recipe shuffling on the main thread
+     * @param shuffleMode the shuffle mode
+     * @param random the random number generator
+     */
+    private void performRecipeShuffle(String shuffleMode, Random random) {
+        try {
+            // Store original recipes if not already stored
+            if (originalRecipes.isEmpty()) {
+                storeOriginalRecipes();
+            }
+            
+            // Clear existing shuffled recipes
+            shuffledRecipes.clear();
+            
+            // Remove all recipes from the server
+            clearServerRecipes();
+            
+            // Shuffle recipes based on mode
+            if (shuffleMode.equalsIgnoreCase("random_item")) {
+                shuffleRandomItem(random);
+            } else if (shuffleMode.equalsIgnoreCase("recipe_result")) {
+                shuffleRecipeResult(random);
+            } else {
+                plugin.getLogger().warning("Unknown shuffle mode: " + shuffleMode + ". Using random_item mode.");
+                shuffleRandomItem(random);
+            }
+            
+            // Register shuffled recipes
+            registerShuffledRecipes();
+            
+            // Set shuffled flag
+            isShuffled = true;
+            
+            // Announce shuffle completion
+            MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleFinished);
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error shuffling recipes: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Try to restore original recipes if possible
+            try {
+                restoreOriginalRecipes();
+            } catch (Exception ex) {
+                plugin.getLogger().severe("Failed to restore original recipes: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        }
     }
     
     /**
@@ -212,9 +245,11 @@ public class RecipeManager {
             // Copy shape
             shuffled.shape(original.getShape());
             
-            // Copy ingredients
+            // Copy ingredients with null check
             for (Map.Entry<Character, RecipeChoice> entry : original.getChoiceMap().entrySet()) {
-                shuffled.setIngredient(entry.getKey(), entry.getValue());
+                if (entry.getValue() != null) {
+                    shuffled.setIngredient(entry.getKey(), entry.getValue());
+                }
             }
             
             return shuffled;
@@ -222,9 +257,11 @@ public class RecipeManager {
             ShapelessRecipe original = (ShapelessRecipe) originalRecipe;
             ShapelessRecipe shuffled = new ShapelessRecipe(key, newResult);
             
-            // Copy ingredients
+            // Copy ingredients with null check
             for (RecipeChoice ingredient : original.getChoiceList()) {
-                shuffled.addIngredient(ingredient);
+                if (ingredient != null) {
+                    shuffled.addIngredient(ingredient);
+                }
             }
             
             return shuffled;
@@ -293,21 +330,40 @@ public class RecipeManager {
             return;
         }
         
-        // Clear all recipes
-        clearServerRecipes();
+        // We need to run recipe manipulation on the main thread
+        Runnable restoreTask = () -> {
+            try {
+                // Clear all recipes
+                clearServerRecipes();
+                
+                // Register original recipes
+                for (Recipe recipe : originalRecipes.values()) {
+                    Bukkit.addRecipe(recipe);
+                }
+                
+                // Clear shuffled recipes
+                shuffledRecipes.clear();
+                
+                // Reset shuffled flag
+                isShuffled = false;
+                
+                plugin.getLogger().info("Restored " + originalRecipes.size() + " original recipes");
+            } catch (Exception e) {
+                plugin.getLogger().severe("Error restoring original recipes: " + e.getMessage());
+                e.printStackTrace();
+            }
+        };
         
-        // Register original recipes
-        for (Recipe recipe : originalRecipes.values()) {
-            Bukkit.addRecipe(recipe);
+        // Run on the main thread
+        if (Bukkit.isPrimaryThread()) {
+            restoreTask.run();
+        } else {
+            if (Main.isFolia()) {
+                Bukkit.getGlobalRegionScheduler().run(plugin, task -> restoreTask.run());
+            } else {
+                Bukkit.getScheduler().runTask(plugin, restoreTask);
+            }
         }
-        
-        // Clear shuffled recipes
-        shuffledRecipes.clear();
-        
-        // Reset shuffled flag
-        isShuffled = false;
-        
-        plugin.getLogger().info("Restored " + originalRecipes.size() + " original recipes");
     }
     
     /**

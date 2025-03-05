@@ -130,10 +130,8 @@ public class TimerManager {
                     task.cancel();
                     countdownTask = null;
                     
-                    // Shuffle recipes asynchronously
-                    Bukkit.getGlobalRegionScheduler().execute(plugin, () -> {
-                        plugin.getRecipeManager().shuffleRecipes();
-                    });
+                    // Shuffle recipes - RecipeManager will handle thread safety
+                    plugin.getRecipeManager().shuffleRecipes();
                 }
             }, 0, 20L); // Run every second
         } else {
@@ -149,10 +147,8 @@ public class TimerManager {
                     ((BukkitTask) countdownTask).cancel();
                     countdownTask = null;
                     
-                    // Shuffle recipes asynchronously
-                    Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                        plugin.getRecipeManager().shuffleRecipes();
-                    });
+                    // Shuffle recipes - RecipeManager will handle thread safety
+                    plugin.getRecipeManager().shuffleRecipes();
                 }
             }, 0, 20L); // Run every second
         }

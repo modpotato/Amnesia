@@ -1,6 +1,5 @@
 package top.modpotato.Amnesia.commands;
 
-import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -74,18 +73,9 @@ public class AmnesiaCommand implements CommandExecutor, TabCompleter {
             }
         }
         
-        // Shuffle recipes asynchronously
-        if (Main.isFolia()) {
-            sender.sendMessage("§aStarting recipe shuffle...");
-            Bukkit.getGlobalRegionScheduler().execute(plugin, () -> {
-                plugin.getRecipeManager().shuffleRecipes();
-            });
-        } else {
-            sender.sendMessage("§aStarting recipe shuffle...");
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                plugin.getRecipeManager().shuffleRecipes();
-            });
-        }
+        // Shuffle recipes - RecipeManager will handle thread safety
+        sender.sendMessage("§aStarting recipe shuffle...");
+        plugin.getRecipeManager().shuffleRecipes();
         
         return true;
     }
