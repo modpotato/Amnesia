@@ -1,0 +1,59 @@
+# Amnesia Configuration
+
+# Shuffle mode: "random_item" or "recipe_result"
+# random_item: Recipe outputs are replaced with random items from the Minecraft item registry
+# recipe_result: Recipe outputs are shuffled amongst existing recipes
+shuffle-mode: "random_item"
+
+# Timer interval in seconds (default: 3600 - 1 hour)
+timer-interval: 3600
+
+# Whether the timer-based reshuffling is enabled by default
+timer-enabled: false
+
+# The seed used for recipe shuffling (randomly generated on first run if not set)
+# seed: 123456789
+
+# List of recipe keys to exclude from shuffling
+excluded-recipes:
+  # - "minecraft:stick"
+
+# List of item keys to exclude from being selected in random_item shuffle mode
+excluded-random-items:
+  - "minecraft:air"
+  - "minecraft:barrier"
+  - "minecraft:structure_void"
+  - "minecraft:command_block"
+  - "minecraft:chain_command_block"
+  - "minecraft:repeating_command_block"
+  - "minecraft:command_block_minecart"
+  - "minecraft:debug_stick"
+  - "minecraft:jigsaw"
+  - "minecraft:structure_block"
+  - "minecraft:knowledge_book"
+
+# Countdown intervals (in seconds) for timer notifications
+notification-intervals:
+  - 300 # 5 minutes
+  - 60  # 1 minute
+  - 30  # 30 seconds
+  - 10
+  - 9
+  - 8
+  - 7
+  - 6
+  - 5
+  - 4
+  - 3
+  - 2
+  - 1
+
+# Customizable notification messages
+notification-messages:
+  countdown-5-minutes: "<gold>5 minutes until recipes are shuffled!</gold>"
+  countdown-1-minute: "<yellow>1 minute until recipes are shuffled!</yellow>"
+  countdown-30-seconds: "<yellow>30 seconds until recipes are shuffled!</yellow>"
+  countdown-10-seconds: "<red>Recipes will shuffle in <bold><seconds></bold> seconds!</red>" # <seconds> is a placeholder
+  countdown-start: "<red><bold>Recipes will shuffle in...</bold></red>"
+  shuffle-started: "<green><bold>Recipes have been shuffled!</bold></green>"
+  shuffle-finished: "<green>Recipe shuffling complete.</green>" 

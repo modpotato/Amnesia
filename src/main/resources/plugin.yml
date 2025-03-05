@@ -5,3 +5,26 @@ main: top.modpotato.Amnesia.Main
 api-version: '1.21'
 folia-supported: true
 authors: [${author}]
+
+commands:
+  amnesia:
+    description: Main command for Amnesia plugin
+    usage: /amnesia <shuffle|timer|seed|reload>
+    permission: amnesia.command
+
+permissions:
+  amnesia.command:
+    description: Allows access to the amnesia command
+    default: true
+  amnesia.command.shuffle:
+    description: Allows use of /amnesia shuffle command
+    default: op
+  amnesia.command.timer:
+    description: Allows use of /amnesia timer command
+    default: op
+  amnesia.command.seed:
+    description: Allows use of /amnesia seed command
+    default: op
+  amnesia.command.reload:
+    description: Allows use of /amnesia reload command
+    default: op
