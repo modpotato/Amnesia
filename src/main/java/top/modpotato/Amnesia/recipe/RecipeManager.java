@@ -6,25 +6,19 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
-import org.bukkit.inventory.RecipeChoice;
-import org.bukkit.inventory.ShapedRecipe;
-import org.bukkit.inventory.ShapelessRecipe;
-import org.bukkit.inventory.BlastingRecipe;
-import org.bukkit.inventory.CampfireRecipe;
-import org.bukkit.inventory.FurnaceRecipe;
-import org.bukkit.inventory.SmokingRecipe;
-import org.bukkit.inventory.StonecuttingRecipe;
 import top.modpotato.Amnesia.Main;
+import top.modpotato.Amnesia.recipe.builder.RecipeBuilderFactory;
+import top.modpotato.Amnesia.recipe.util.MaterialCache;
+import top.modpotato.Amnesia.recipe.util.RecipeKeyUtil;
 import top.modpotato.Amnesia.util.MessageUtil;
+import top.modpotato.Amnesia.util.SchedulerUtil;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -80,26 +74,8 @@ public class RecipeManager {
         }
         
         // Prepare recipe data asynchronously when possible
-        CompletableFuture<Void> preparationFuture = CompletableFuture.runAsync(() -> {
-            prepareRecipeData(shuffleMode, random);
-        }).exceptionally(ex -> {
-            plugin.getLogger().severe("Error preparing recipe data: " + ex.getMessage());
-            ex.printStackTrace();
-            return null;
-        });
-        
-        // Apply changes on the main thread after preparation is complete
-        preparationFuture.thenRun(() -> {
-            if (Main.isFolia()) {
-                // For Folia, we need to use the global region scheduler
-                Bukkit.getGlobalRegionScheduler().run(plugin, task -> {
-                    applyRecipeChanges(announce);
-                });
-            } else {
-                // For Paper, we use the Bukkit scheduler
-                Bukkit.getScheduler().runTask(plugin, () -> applyRecipeChanges(announce));
-            }
-        });
+        SchedulerUtil.runAsync(plugin, () -> prepareRecipeData(shuffleMode, random))
+            .thenRun(() -> SchedulerUtil.runTask(plugin, () -> applyRecipeChanges(announce)));
     }
     
     /**
@@ -111,23 +87,7 @@ public class RecipeManager {
         try {
             // Store original recipes if not already stored (this needs to be done on the main thread)
             if (originalRecipes.isEmpty()) {
-                if (Bukkit.isPrimaryThread()) {
-                    storeOriginalRecipes();
-                } else {
-                    CompletableFuture<Void> future = new CompletableFuture<>();
-                    if (Main.isFolia()) {
-                        Bukkit.getGlobalRegionScheduler().run(plugin, task -> {
-                            storeOriginalRecipes();
-                            future.complete(null);
-                        });
-                    } else {
-                        Bukkit.getScheduler().runTask(plugin, () -> {
-                            storeOriginalRecipes();
-                            future.complete(null);
-                        });
-                    }
-                    future.join(); // Wait for completion
-                }
+                SchedulerUtil.runTaskAsync(plugin, this::storeOriginalRecipes).join();
             }
             
             // Clear existing shuffled recipes
@@ -170,6 +130,9 @@ public class RecipeManager {
         if (announce) {
             MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleFinished);
         }
+        
+        plugin.getLogger().info("Recipes shuffled successfully with seed: " + plugin.getDataManager().getSeed() + 
+                " (" + (plugin.getDataManager().isUserSetSeed() ? "user-set" : "random") + ")");
     }
     
     /**
@@ -223,11 +186,11 @@ public class RecipeManager {
             Recipe recipe = recipeIterator.next();
             
             // Skip recipes that don't have a key
-            if (!hasNamespacedKey(recipe)) {
+            if (!RecipeKeyUtil.hasNamespacedKey(recipe)) {
                 continue;
             }
             
-            NamespacedKey key = getNamespacedKey(recipe);
+            NamespacedKey key = RecipeKeyUtil.getNamespacedKey(recipe);
             
             // Skip excluded recipes
             if (excludedRecipes.contains(key.toString())) {
@@ -258,12 +221,7 @@ public class RecipeManager {
      */
     private void prepareRandomItemRecipes(Random random) {
         // Get all available materials
-        List<Material> availableMaterials = new ArrayList<>();
-        for (Material material : Material.values()) {
-            if (material.isItem() && !isExcludedRandomItem(material)) {
-                availableMaterials.add(material);
-            }
-        }
+        List<Material> availableMaterials = MaterialCache.getAvailableRandomItemMaterials(plugin);
         
         // Prepare shuffled recipes
         for (Map.Entry<NamespacedKey, Recipe> entry : originalRecipes.entrySet()) {
@@ -275,7 +233,7 @@ public class RecipeManager {
             ItemStack randomItem = new ItemStack(randomMaterial);
             
             // Create a new recipe with the random item as the result
-            Recipe shuffledRecipe = createShuffledRecipe(key, recipe, randomItem);
+            Recipe shuffledRecipe = RecipeBuilderFactory.createRecipe(key, recipe, randomItem);
             
             // Store the shuffled recipe
             if (shuffledRecipe != null) {
@@ -310,7 +268,7 @@ public class RecipeManager {
             ItemStack shuffledResult = recipeResults.get(i);
             
             // Create a new recipe with the shuffled result
-            Recipe shuffledRecipe = createShuffledRecipe(key, recipe, shuffledResult);
+            Recipe shuffledRecipe = RecipeBuilderFactory.createRecipe(key, recipe, shuffledResult);
             
             // Store the shuffled recipe
             if (shuffledRecipe != null) {
@@ -321,90 +279,6 @@ public class RecipeManager {
         }
         
         plugin.getLogger().info("Prepared " + shuffledRecipes.size() + " recipes by swapping results");
-    }
-    
-    /**
-     * Creates a shuffled recipe with a new result
-     * Can be called asynchronously
-     * @param key the recipe key
-     * @param originalRecipe the original recipe
-     * @param newResult the new result
-     * @return the shuffled recipe
-     */
-    private Recipe createShuffledRecipe(NamespacedKey key, Recipe originalRecipe, ItemStack newResult) {
-        if (originalRecipe instanceof ShapedRecipe) {
-            ShapedRecipe original = (ShapedRecipe) originalRecipe;
-            ShapedRecipe shuffled = new ShapedRecipe(key, newResult);
-            
-            // Copy shape
-            shuffled.shape(original.getShape());
-            
-            // Copy ingredients with null check
-            for (Map.Entry<Character, RecipeChoice> entry : original.getChoiceMap().entrySet()) {
-                if (entry.getValue() != null) {
-                    shuffled.setIngredient(entry.getKey(), entry.getValue());
-                }
-            }
-            
-            return shuffled;
-        } else if (originalRecipe instanceof ShapelessRecipe) {
-            ShapelessRecipe original = (ShapelessRecipe) originalRecipe;
-            ShapelessRecipe shuffled = new ShapelessRecipe(key, newResult);
-            
-            // Copy ingredients with null check
-            for (RecipeChoice ingredient : original.getChoiceList()) {
-                if (ingredient != null) {
-                    shuffled.addIngredient(ingredient);
-                }
-            }
-            
-            return shuffled;
-        } else if (originalRecipe instanceof FurnaceRecipe) {
-            FurnaceRecipe original = (FurnaceRecipe) originalRecipe;
-            return new FurnaceRecipe(
-                    key,
-                    newResult,
-                    original.getInputChoice(),
-                    original.getExperience(),
-                    original.getCookingTime()
-            );
-        } else if (originalRecipe instanceof BlastingRecipe) {
-            BlastingRecipe original = (BlastingRecipe) originalRecipe;
-            return new BlastingRecipe(
-                    key,
-                    newResult,
-                    original.getInputChoice(),
-                    original.getExperience(),
-                    original.getCookingTime()
-            );
-        } else if (originalRecipe instanceof SmokingRecipe) {
-            SmokingRecipe original = (SmokingRecipe) originalRecipe;
-            return new SmokingRecipe(
-                    key,
-                    newResult,
-                    original.getInputChoice(),
-                    original.getExperience(),
-                    original.getCookingTime()
-            );
-        } else if (originalRecipe instanceof CampfireRecipe) {
-            CampfireRecipe original = (CampfireRecipe) originalRecipe;
-            return new CampfireRecipe(
-                    key,
-                    newResult,
-                    original.getInputChoice(),
-                    original.getExperience(),
-                    original.getCookingTime()
-            );
-        } else if (originalRecipe instanceof StonecuttingRecipe) {
-            StonecuttingRecipe original = (StonecuttingRecipe) originalRecipe;
-            return new StonecuttingRecipe(
-                    key,
-                    newResult,
-                    original.getInputChoice()
-            );
-        }
-        
-        return null;
     }
     
     /**
@@ -421,71 +295,23 @@ public class RecipeManager {
      * Restores the original recipes
      */
     public void restoreOriginalRecipes() {
-        // Clear server recipes
-        clearServerRecipes();
-        
-        // Register original recipes
-        for (Recipe recipe : originalRecipes.values()) {
-            Bukkit.addRecipe(recipe);
-        }
-        
-        // Sync client recipes
-        syncClientRecipes();
-        
-        // Update shuffle state
-        plugin.getDataManager().setShuffled(false);
-        plugin.getDataManager().saveData();
-        
-        plugin.getLogger().info("Original recipes restored.");
-    }
-    
-    /**
-     * Checks if a material is excluded from random item selection
-     * @param material the material to check
-     * @return true if the material is excluded, false otherwise
-     */
-    private boolean isExcludedRandomItem(Material material) {
-        List<String> excludedItems = plugin.getConfigManager().getExcludedRandomItems();
-        return excludedItems.contains("minecraft:" + material.name().toLowerCase());
-    }
-    
-    /**
-     * Checks if a recipe has a namespaced key
-     * @param recipe the recipe to check
-     * @return true if the recipe has a key, false otherwise
-     */
-    private boolean hasNamespacedKey(Recipe recipe) {
-        return recipe instanceof ShapedRecipe ||
-                recipe instanceof ShapelessRecipe ||
-                recipe instanceof FurnaceRecipe ||
-                recipe instanceof BlastingRecipe ||
-                recipe instanceof SmokingRecipe ||
-                recipe instanceof CampfireRecipe ||
-                recipe instanceof StonecuttingRecipe;
-    }
-    
-    /**
-     * Gets the namespaced key of a recipe
-     * @param recipe the recipe
-     * @return the namespaced key
-     */
-    private NamespacedKey getNamespacedKey(Recipe recipe) {
-        if (recipe instanceof ShapedRecipe) {
-            return ((ShapedRecipe) recipe).getKey();
-        } else if (recipe instanceof ShapelessRecipe) {
-            return ((ShapelessRecipe) recipe).getKey();
-        } else if (recipe instanceof FurnaceRecipe) {
-            return ((FurnaceRecipe) recipe).getKey();
-        } else if (recipe instanceof BlastingRecipe) {
-            return ((BlastingRecipe) recipe).getKey();
-        } else if (recipe instanceof SmokingRecipe) {
-            return ((SmokingRecipe) recipe).getKey();
-        } else if (recipe instanceof CampfireRecipe) {
-            return ((CampfireRecipe) recipe).getKey();
-        } else if (recipe instanceof StonecuttingRecipe) {
-            return ((StonecuttingRecipe) recipe).getKey();
-        }
-        
-        return null;
+        SchedulerUtil.runTask(plugin, () -> {
+            // Clear server recipes
+            clearServerRecipes();
+            
+            // Register original recipes
+            for (Recipe recipe : originalRecipes.values()) {
+                Bukkit.addRecipe(recipe);
+            }
+            
+            // Sync client recipes
+            syncClientRecipes();
+            
+            // Update shuffle state
+            plugin.getDataManager().setShuffled(false);
+            plugin.getDataManager().saveData();
+            
+            plugin.getLogger().info("Original recipes restored.");
+        });
     }
 } 
