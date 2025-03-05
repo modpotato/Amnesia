@@ -9,6 +9,7 @@ Amnesia is a highly configurable Minecraft plugin for PaperMC and Folia servers 
   - **Recipe Result Shuffle Mode:** Recipe outputs are shuffled amongst existing recipes.
 - **Timer-Based Reshuffling:** Automatic reshuffling of recipes at configurable intervals with countdown notifications.
 - **Seed-Based Rotations:** Ability to use seeds to generate and recall specific recipe shuffles.
+- **Client Recipe Synchronization:** Control how clients handle recipe changes with three different modes.
 - **Command-Line Interface:** Comprehensive commands for managing shuffling, timer, seed, and configuration.
 - **Configuration File:** YAML based configuration for persistent settings and customization.
 - **Performance Focused:** Designed for minimal server impact, especially on Folia servers.
@@ -41,6 +42,12 @@ timer-interval: 3600
 
 # Whether the timer-based reshuffling is enabled by default
 timer-enabled: false
+
+# Client recipe synchronization mode:
+# "resync" - Clients will be resynced with the new recipes (default)
+# "clear" - Clients won't get any recipes
+# "vanilla" - Don't touch client recipes and let Minecraft handle it
+client-sync-mode: "resync"
 
 # The seed used for recipe shuffling
 # seed: 123456789

@@ -23,6 +23,7 @@ public class ConfigManager {
     private String shuffleMode = "random_item";
     private int timerInterval = 3600;
     private boolean timerEnabled = false;
+    private String clientSyncMode = "resync";
     private long seed;
     private List<String> excludedRecipes = new ArrayList<>();
     private List<String> excludedRandomItems = new ArrayList<>();
@@ -61,6 +62,7 @@ public class ConfigManager {
         shuffleMode = config.getString("shuffle-mode", shuffleMode);
         timerInterval = config.getInt("timer-interval", timerInterval);
         timerEnabled = config.getBoolean("timer-enabled", timerEnabled);
+        clientSyncMode = config.getString("client-sync-mode", clientSyncMode);
         seed = config.getLong("seed", seed);
         excludedRecipes = config.getStringList("excluded-recipes");
         excludedRandomItems = config.getStringList("excluded-random-items");
@@ -104,6 +106,7 @@ public class ConfigManager {
         config.set("shuffle-mode", shuffleMode);
         config.set("timer-interval", timerInterval);
         config.set("timer-enabled", timerEnabled);
+        config.set("client-sync-mode", clientSyncMode);
         config.set("seed", seed);
         config.set("excluded-recipes", excludedRecipes);
         config.set("excluded-random-items", excludedRandomItems);
@@ -171,6 +174,22 @@ public class ConfigManager {
      */
     public void setTimerEnabled(boolean timerEnabled) {
         this.timerEnabled = timerEnabled;
+    }
+    
+    /**
+     * Gets the client sync mode
+     * @return the client sync mode
+     */
+    public String getClientSyncMode() {
+        return clientSyncMode;
+    }
+    
+    /**
+     * Sets the client sync mode
+     * @param clientSyncMode the client sync mode
+     */
+    public void setClientSyncMode(String clientSyncMode) {
+        this.clientSyncMode = clientSyncMode;
     }
     
     /**

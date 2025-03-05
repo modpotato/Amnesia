@@ -3,6 +3,7 @@ package top.modpotato.Amnesia.recipe;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.RecipeChoice;
@@ -23,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -56,47 +58,82 @@ public class RecipeManager {
         // Announce shuffle start
         MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleStarted);
         
-        // We need to run recipe manipulation on the main thread to avoid ConcurrentModificationException
-        if (Main.isFolia()) {
-            // For Folia, we need to use the global region scheduler
-            Bukkit.getGlobalRegionScheduler().run(plugin, task -> {
-                performRecipeShuffle(shuffleMode, random);
-            });
-        } else {
-            // For Paper, we use the Bukkit scheduler
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                performRecipeShuffle(shuffleMode, random);
-            });
-        }
+        // Prepare recipe data asynchronously when possible
+        CompletableFuture<Void> preparationFuture = CompletableFuture.runAsync(() -> {
+            prepareRecipeData(shuffleMode, random);
+        }).exceptionally(ex -> {
+            plugin.getLogger().severe("Error preparing recipe data: " + ex.getMessage());
+            ex.printStackTrace();
+            return null;
+        });
+        
+        // Apply changes on the main thread after preparation is complete
+        preparationFuture.thenRun(() -> {
+            if (Main.isFolia()) {
+                // For Folia, we need to use the global region scheduler
+                Bukkit.getGlobalRegionScheduler().run(plugin, task -> {
+                    applyRecipeChanges();
+                });
+            } else {
+                // For Paper, we use the Bukkit scheduler
+                Bukkit.getScheduler().runTask(plugin, this::applyRecipeChanges);
+            }
+        });
     }
     
     /**
-     * Performs the actual recipe shuffling on the main thread
+     * Prepares recipe data asynchronously
      * @param shuffleMode the shuffle mode
      * @param random the random number generator
      */
-    private void performRecipeShuffle(String shuffleMode, Random random) {
+    private void prepareRecipeData(String shuffleMode, Random random) {
         try {
-            // Store original recipes if not already stored
+            // Store original recipes if not already stored (this needs to be done on the main thread)
             if (originalRecipes.isEmpty()) {
-                storeOriginalRecipes();
+                if (Bukkit.isPrimaryThread()) {
+                    storeOriginalRecipes();
+                } else {
+                    CompletableFuture<Void> future = new CompletableFuture<>();
+                    if (Main.isFolia()) {
+                        Bukkit.getGlobalRegionScheduler().run(plugin, task -> {
+                            storeOriginalRecipes();
+                            future.complete(null);
+                        });
+                    } else {
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            storeOriginalRecipes();
+                            future.complete(null);
+                        });
+                    }
+                    future.join(); // Wait for completion
+                }
             }
             
             // Clear existing shuffled recipes
             shuffledRecipes.clear();
             
-            // Remove all recipes from the server
-            clearServerRecipes();
-            
-            // Shuffle recipes based on mode
+            // Prepare shuffled recipes based on mode
             if (shuffleMode.equalsIgnoreCase("random_item")) {
-                shuffleRandomItem(random);
+                prepareRandomItemRecipes(random);
             } else if (shuffleMode.equalsIgnoreCase("recipe_result")) {
-                shuffleRecipeResult(random);
+                prepareRecipeResultRecipes(random);
             } else {
                 plugin.getLogger().warning("Unknown shuffle mode: " + shuffleMode + ". Using random_item mode.");
-                shuffleRandomItem(random);
+                prepareRandomItemRecipes(random);
             }
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error preparing recipe data: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Applies recipe changes on the main thread
+     */
+    private void applyRecipeChanges() {
+        try {
+            // Remove all recipes from the server
+            clearServerRecipes();
             
             // Register shuffled recipes
             registerShuffledRecipes();
@@ -104,10 +141,13 @@ public class RecipeManager {
             // Set shuffled flag
             isShuffled = true;
             
+            // Handle client recipe synchronization based on config
+            syncClientRecipes();
+            
             // Announce shuffle completion
             MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleFinished);
         } catch (Exception e) {
-            plugin.getLogger().severe("Error shuffling recipes: " + e.getMessage());
+            plugin.getLogger().severe("Error applying recipe changes: " + e.getMessage());
             e.printStackTrace();
             
             // Try to restore original recipes if possible
@@ -121,7 +161,48 @@ public class RecipeManager {
     }
     
     /**
+     * Synchronizes client recipes based on the configured mode
+     */
+    private void syncClientRecipes() {
+        String syncMode = plugin.getConfigManager().getClientSyncMode();
+        
+        switch (syncMode.toLowerCase()) {
+            case "resync":
+                // Resync all clients with the new recipes
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    player.updateCommands();
+                    player.discoverRecipes(shuffledRecipes.keySet());
+                }
+                plugin.getLogger().info("Resynced all clients with new recipes");
+                break;
+                
+            case "clear":
+                // Clear all recipes from clients
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    player.updateCommands();
+                    player.undiscoverRecipes(originalRecipes.keySet());
+                }
+                plugin.getLogger().info("Cleared all recipes from clients");
+                break;
+                
+            case "vanilla":
+                // Let Minecraft handle it
+                plugin.getLogger().info("Using vanilla recipe handling for clients");
+                break;
+                
+            default:
+                plugin.getLogger().warning("Unknown client sync mode: " + syncMode + ". Using resync mode.");
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    player.updateCommands();
+                    player.discoverRecipes(shuffledRecipes.keySet());
+                }
+                break;
+        }
+    }
+    
+    /**
      * Stores the original recipes from the server
+     * Must be called on the main thread
      */
     private void storeOriginalRecipes() {
         originalRecipes.clear();
@@ -153,6 +234,7 @@ public class RecipeManager {
     
     /**
      * Clears all recipes from the server
+     * Must be called on the main thread
      */
     private void clearServerRecipes() {
         for (NamespacedKey key : originalRecipes.keySet()) {
@@ -161,10 +243,11 @@ public class RecipeManager {
     }
     
     /**
-     * Shuffles recipes by replacing their results with random items
+     * Prepares random item recipes
+     * Can be called asynchronously
      * @param random the random number generator
      */
-    private void shuffleRandomItem(Random random) {
+    private void prepareRandomItemRecipes(Random random) {
         // Get all available materials
         List<Material> availableMaterials = new ArrayList<>();
         for (Material material : Material.values()) {
@@ -173,7 +256,7 @@ public class RecipeManager {
             }
         }
         
-        // Shuffle recipes
+        // Prepare shuffled recipes
         for (Map.Entry<NamespacedKey, Recipe> entry : originalRecipes.entrySet()) {
             NamespacedKey key = entry.getKey();
             Recipe recipe = entry.getValue();
@@ -191,14 +274,15 @@ public class RecipeManager {
             }
         }
         
-        plugin.getLogger().info("Shuffled " + shuffledRecipes.size() + " recipes with random items");
+        plugin.getLogger().info("Prepared " + shuffledRecipes.size() + " recipes with random items");
     }
     
     /**
-     * Shuffles recipes by swapping their results
+     * Prepares recipe result recipes
+     * Can be called asynchronously
      * @param random the random number generator
      */
-    private void shuffleRecipeResult(Random random) {
+    private void prepareRecipeResultRecipes(Random random) {
         // Get all recipe results
         List<ItemStack> recipeResults = originalRecipes.values().stream()
                 .map(Recipe::getResult)
@@ -227,11 +311,12 @@ public class RecipeManager {
             i++;
         }
         
-        plugin.getLogger().info("Shuffled " + shuffledRecipes.size() + " recipes by swapping results");
+        plugin.getLogger().info("Prepared " + shuffledRecipes.size() + " recipes by swapping results");
     }
     
     /**
      * Creates a shuffled recipe with a new result
+     * Can be called asynchronously
      * @param key the recipe key
      * @param originalRecipe the original recipe
      * @param newResult the new result
@@ -315,6 +400,7 @@ public class RecipeManager {
     
     /**
      * Registers the shuffled recipes on the server
+     * Must be called on the main thread
      */
     private void registerShuffledRecipes() {
         for (Recipe recipe : shuffledRecipes.values()) {
@@ -339,6 +425,15 @@ public class RecipeManager {
                 // Register original recipes
                 for (Recipe recipe : originalRecipes.values()) {
                     Bukkit.addRecipe(recipe);
+                }
+                
+                // Handle client recipe synchronization based on config
+                String syncMode = plugin.getConfigManager().getClientSyncMode();
+                if (syncMode.equalsIgnoreCase("resync") || syncMode.equalsIgnoreCase("clear")) {
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        player.updateCommands();
+                        player.discoverRecipes(originalRecipes.keySet());
+                    }
                 }
                 
                 // Clear shuffled recipes
