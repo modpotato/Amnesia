@@ -18,7 +18,7 @@ Amnesia is a highly configurable Minecraft plugin for PaperMC and Folia servers 
 
 ## Commands
 
-- `/amnesia shuffle [mode]` - Shuffles recipes using the specified mode (random_item or recipe_result).
+- `/amnesia shuffle [mode] [seed <value>|random]` - Shuffles recipes using the specified mode and optionally a seed.
 - `/amnesia timer [enable|disable|interval <seconds>]` - Manages the timer-based reshuffling.
 - `/amnesia seed [view|set <seed>|random]` - Manages the shuffle seed.
 - `/amnesia reload` - Reloads the plugin configuration.
@@ -32,7 +32,7 @@ Amnesia is a highly configurable Minecraft plugin for PaperMC and Folia servers 
 
 ## Configuration
 
-The plugin uses a `config.yml` file for all persistent settings. Here's an example configuration:
+The plugin uses a `config.yml` file for configuration settings and a `data.yml` file for persistent data. Here's an example configuration:
 
 ```yaml
 # Shuffle mode: "random_item" or "recipe_result"
@@ -49,18 +49,6 @@ timer-enabled: false
 # "clear" - Clients won't get any recipes
 # "vanilla" - Don't touch client recipes and let Minecraft handle it
 client-sync-mode: "resync"
-
-# The seed used for recipe shuffling
-# seed: 123456789
-
-# Whether the seed was set by the user (true) or generated randomly (false)
-# user-set-seed: false
-
-# Whether recipes are currently shuffled
-# is-shuffled: false
-
-# When recipes were last shuffled (milliseconds since epoch)
-# last-shuffle-time: 0
 
 # List of recipe keys to exclude from shuffling
 excluded-recipes:
@@ -83,6 +71,22 @@ notification-intervals:
 notification-messages:
   countdown-5-minutes: "<gold>5 minutes until recipes are shuffled!</gold>"
   # ... more messages
+```
+
+The `data.yml` file stores persistent data such as:
+
+```yaml
+# The seed used for recipe shuffling
+seed: 123456789
+
+# Whether the seed was set by the user (true) or generated randomly (false)
+user-set-seed: false
+
+# Whether recipes are currently shuffled
+is-shuffled: false
+
+# When recipes were last shuffled (milliseconds since epoch)
+last-shuffle-time: 0
 ```
 
 ## Installation

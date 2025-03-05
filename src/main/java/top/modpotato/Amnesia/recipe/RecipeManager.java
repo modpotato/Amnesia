@@ -49,7 +49,7 @@ public class RecipeManager {
      */
     public void initialize() {
         // Check if recipes were shuffled before restart
-        if (plugin.getConfigManager().isShuffled()) {
+        if (plugin.getDataManager().isShuffled()) {
             plugin.getLogger().info("Recipes were shuffled before restart, restoring shuffle state...");
             shuffleRecipes(false); // Restore shuffle state without announcement
         }
@@ -67,8 +67,8 @@ public class RecipeManager {
      * @param announce whether to announce the shuffle
      */
     public void shuffleRecipes(boolean announce) {
-        // Get the seed from config
-        long seed = plugin.getConfigManager().getSeed();
+        // Get the seed from data
+        long seed = plugin.getDataManager().getSeed();
         Random random = new Random(seed);
         
         // Get the shuffle mode from config
@@ -153,38 +153,22 @@ public class RecipeManager {
      * @param announce whether to announce the completion
      */
     private void applyRecipeChanges(boolean announce) {
-        try {
-            // Remove all recipes from the server
-            clearServerRecipes();
-            
-            // Register shuffled recipes
-            registerShuffledRecipes();
-            
-            // Update shuffle state in config
-            plugin.getConfigManager().setShuffled(true);
-            plugin.getConfigManager().saveConfig();
-            
-            // Handle client recipe synchronization based on config
-            syncClientRecipes();
-            
-            // Announce shuffle completion if needed
-            if (announce) {
-                MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleFinished);
-            }
-            
-            plugin.getLogger().info("Recipes shuffled successfully with seed: " + plugin.getConfigManager().getSeed() + 
-                    " (" + (plugin.getConfigManager().isUserSetSeed() ? "user-set" : "random") + ")");
-        } catch (Exception e) {
-            plugin.getLogger().severe("Error applying recipe changes: " + e.getMessage());
-            e.printStackTrace();
-            
-            // Try to restore original recipes if possible
-            try {
-                restoreOriginalRecipes();
-            } catch (Exception ex) {
-                plugin.getLogger().severe("Failed to restore original recipes: " + ex.getMessage());
-                ex.printStackTrace();
-            }
+        // Clear server recipes
+        clearServerRecipes();
+        
+        // Register shuffled recipes
+        registerShuffledRecipes();
+        
+        // Sync client recipes
+        syncClientRecipes();
+        
+        // Update shuffle state
+        plugin.getDataManager().setShuffled(true);
+        plugin.getDataManager().saveData();
+        
+        // Announce shuffle finished if needed
+        if (announce) {
+            MessageUtil.broadcastMessage(plugin.getConfigManager().getNotificationMessages().shuffleFinished);
         }
     }
     
@@ -440,54 +424,22 @@ public class RecipeManager {
      * Restores the original recipes
      */
     public void restoreOriginalRecipes() {
-        if (!plugin.getConfigManager().isShuffled()) {
-            return;
+        // Clear server recipes
+        clearServerRecipes();
+        
+        // Register original recipes
+        for (Recipe recipe : originalRecipes.values()) {
+            Bukkit.addRecipe(recipe);
         }
         
-        // We need to run recipe manipulation on the main thread
-        Runnable restoreTask = () -> {
-            try {
-                // Clear all recipes
-                clearServerRecipes();
-                
-                // Register original recipes
-                for (Recipe recipe : originalRecipes.values()) {
-                    Bukkit.addRecipe(recipe);
-                }
-                
-                // Handle client recipe synchronization based on config
-                String syncMode = plugin.getConfigManager().getClientSyncMode();
-                if (syncMode.equalsIgnoreCase("resync") || syncMode.equalsIgnoreCase("clear")) {
-                    for (Player player : Bukkit.getOnlinePlayers()) {
-                        player.updateCommands();
-                        player.discoverRecipes(originalRecipes.keySet());
-                    }
-                }
-                
-                // Clear shuffled recipes
-                shuffledRecipes.clear();
-                
-                // Update shuffle state in config
-                plugin.getConfigManager().setShuffled(false);
-                plugin.getConfigManager().saveConfig();
-                
-                plugin.getLogger().info("Restored " + originalRecipes.size() + " original recipes");
-            } catch (Exception e) {
-                plugin.getLogger().severe("Error restoring original recipes: " + e.getMessage());
-                e.printStackTrace();
-            }
-        };
+        // Sync client recipes
+        syncClientRecipes();
         
-        // Run on the main thread
-        if (Bukkit.isPrimaryThread()) {
-            restoreTask.run();
-        } else {
-            if (Main.isFolia()) {
-                Bukkit.getGlobalRegionScheduler().run(plugin, task -> restoreTask.run());
-            } else {
-                Bukkit.getScheduler().runTask(plugin, restoreTask);
-            }
-        }
+        // Update shuffle state
+        plugin.getDataManager().setShuffled(false);
+        plugin.getDataManager().saveData();
+        
+        plugin.getLogger().info("Original recipes restored.");
     }
     
     /**

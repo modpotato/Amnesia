@@ -3,6 +3,7 @@ package top.modpotato.Amnesia;
 import org.bukkit.plugin.java.JavaPlugin;
 import top.modpotato.Amnesia.commands.AmnesiaCommand;
 import top.modpotato.Amnesia.config.ConfigManager;
+import top.modpotato.Amnesia.config.DataManager;
 import top.modpotato.Amnesia.recipe.RecipeManager;
 import top.modpotato.Amnesia.timer.TimerManager;
 
@@ -14,6 +15,7 @@ public class Main extends JavaPlugin {
     private static boolean isFolia;
     private static Main instance;
     private ConfigManager configManager;
+    private DataManager dataManager;
     private RecipeManager recipeManager;
     private TimerManager timerManager;
 
@@ -27,6 +29,10 @@ public class Main extends JavaPlugin {
             // Initialize config manager
             configManager = new ConfigManager(this);
             configManager.loadConfig();
+            
+            // Initialize data manager
+            dataManager = new DataManager(this);
+            dataManager.loadData();
             
             // Initialize recipe manager
             recipeManager = new RecipeManager(this);
@@ -65,6 +71,11 @@ public class Main extends JavaPlugin {
             // Save config
             if (configManager != null) {
                 configManager.saveConfig();
+            }
+            
+            // Save data
+            if (dataManager != null) {
+                dataManager.saveData();
             }
             
             getLogger().info("Amnesia has been disabled!");
@@ -109,6 +120,14 @@ public class Main extends JavaPlugin {
      */
     public ConfigManager getConfigManager() {
         return configManager;
+    }
+    
+    /**
+     * Gets the data manager
+     * @return the data manager
+     */
+    public DataManager getDataManager() {
+        return dataManager;
     }
     
     /**

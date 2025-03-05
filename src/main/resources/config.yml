@@ -17,18 +17,6 @@ timer-enabled: false
 # "vanilla" - Don't touch client recipes and let Minecraft handle it
 client-sync-mode: "resync"
 
-# The seed used for recipe shuffling (randomly generated on first run if not set)
-# seed: 123456789
-
-# Whether the seed was set by the user (true) or generated randomly (false)
-# user-set-seed: false
-
-# Whether recipes are currently shuffled
-# is-shuffled: false
-
-# When recipes were last shuffled (milliseconds since epoch)
-# last-shuffle-time: 0
-
 # List of recipe keys to exclude from shuffling
 excluded-recipes:
   # - "minecraft:stick"

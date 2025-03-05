@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 /**
  * Manages the configuration for the Amnesia plugin
@@ -24,10 +23,6 @@ public class ConfigManager {
     private int timerInterval = 3600;
     private boolean timerEnabled = false;
     private String clientSyncMode = "resync";
-    private long seed;
-    private boolean userSetSeed = false; // Track if the seed was set by the user
-    private boolean isShuffled = false; // Track if recipes are currently shuffled
-    private long lastShuffleTime = 0; // Track when recipes were last shuffled
     private List<String> excludedRecipes = new ArrayList<>();
     private List<String> excludedRandomItems = new ArrayList<>();
     private List<Integer> notificationIntervals = Arrays.asList(300, 60, 30, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
@@ -39,7 +34,6 @@ public class ConfigManager {
      */
     public ConfigManager(Main plugin) {
         this.plugin = plugin;
-        this.seed = new Random().nextLong();
         this.configFile = new File(plugin.getDataFolder(), "config.yml");
     }
     
@@ -66,19 +60,6 @@ public class ConfigManager {
         timerInterval = config.getInt("timer-interval", timerInterval);
         timerEnabled = config.getBoolean("timer-enabled", timerEnabled);
         clientSyncMode = config.getString("client-sync-mode", clientSyncMode);
-        
-        // Load seed and seed state
-        if (config.contains("seed")) {
-            seed = config.getLong("seed");
-            userSetSeed = config.getBoolean("user-set-seed", false);
-        } else {
-            seed = new Random().nextLong();
-            userSetSeed = false;
-        }
-        
-        // Load shuffle state
-        isShuffled = config.getBoolean("is-shuffled", false);
-        lastShuffleTime = config.getLong("last-shuffle-time", 0);
         
         excludedRecipes = config.getStringList("excluded-recipes");
         excludedRandomItems = config.getStringList("excluded-random-items");
@@ -123,10 +104,6 @@ public class ConfigManager {
         config.set("timer-interval", timerInterval);
         config.set("timer-enabled", timerEnabled);
         config.set("client-sync-mode", clientSyncMode);
-        config.set("seed", seed);
-        config.set("user-set-seed", userSetSeed);
-        config.set("is-shuffled", isShuffled);
-        config.set("last-shuffle-time", lastShuffleTime);
         config.set("excluded-recipes", excludedRecipes);
         config.set("excluded-random-items", excludedRandomItems);
         config.set("notification-intervals", notificationIntervals);
@@ -212,70 +189,7 @@ public class ConfigManager {
     }
     
     /**
-     * Gets the seed for recipe shuffling
-     * @return the seed
-     */
-    public long getSeed() {
-        return seed;
-    }
-    
-    /**
-     * Sets the seed for recipe shuffling
-     * @param seed the seed
-     * @param userSet whether the seed was set by the user
-     */
-    public void setSeed(long seed, boolean userSet) {
-        this.seed = seed;
-        this.userSetSeed = userSet;
-    }
-    
-    /**
-     * Checks if the seed was set by the user
-     * @return true if the seed was set by the user, false if it was generated randomly
-     */
-    public boolean isUserSetSeed() {
-        return userSetSeed;
-    }
-    
-    /**
-     * Generates a new random seed
-     * @return the new seed
-     */
-    public long generateRandomSeed() {
-        this.seed = new Random().nextLong();
-        this.userSetSeed = false;
-        return this.seed;
-    }
-    
-    /**
-     * Checks if recipes are currently shuffled
-     * @return true if recipes are shuffled, false otherwise
-     */
-    public boolean isShuffled() {
-        return isShuffled;
-    }
-    
-    /**
-     * Sets whether recipes are currently shuffled
-     * @param shuffled true if recipes are shuffled, false otherwise
-     */
-    public void setShuffled(boolean shuffled) {
-        this.isShuffled = shuffled;
-        if (shuffled) {
-            this.lastShuffleTime = System.currentTimeMillis();
-        }
-    }
-    
-    /**
-     * Gets the time when recipes were last shuffled
-     * @return the last shuffle time in milliseconds since epoch
-     */
-    public long getLastShuffleTime() {
-        return lastShuffleTime;
-    }
-    
-    /**
-     * Gets the list of excluded recipes
+     * Gets the excluded recipes
      * @return the excluded recipes
      */
     public List<String> getExcludedRecipes() {
@@ -283,7 +197,7 @@ public class ConfigManager {
     }
     
     /**
-     * Gets the list of excluded random items
+     * Gets the excluded random items
      * @return the excluded random items
      */
     public List<String> getExcludedRandomItems() {
@@ -314,9 +228,9 @@ public class ConfigManager {
     }
     
     /**
-     * Container class for notification messages
+     * Notification messages
      */
-    public static class NotificationMessages {
+    public class NotificationMessages {
         public String countdownFiveMinutes = "<gold>5 minutes until recipes are shuffled!</gold>";
         public String countdownOneMinute = "<yellow>1 minute until recipes are shuffled!</yellow>";
         public String countdownThirtySeconds = "<yellow>30 seconds until recipes are shuffled!</yellow>";
