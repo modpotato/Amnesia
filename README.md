@@ -48,7 +48,7 @@ timer-enabled: false
 # "resync" - Clients will be resynced with the new recipes (default)
 # "clear" - Clients won't get any recipes
 # "vanilla" - Don't touch client recipes and let Minecraft handle it
-client-sync-mode: "resync"
+client-sync-mode: "vanilla"
 
 # List of recipe keys to exclude from shuffling
 excluded-recipes:

@@ -203,11 +203,8 @@ public class RecipeManager {
                 break;
                 
             default:
-                plugin.getLogger().warning("Unknown client sync mode: " + syncMode + ". Using resync mode.");
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    player.updateCommands();
-                    player.discoverRecipes(shuffledRecipes.keySet());
-                }
+                plugin.getLogger().warning("Unknown client sync mode: " + syncMode + ". Using vanilla mode.");
+                plugin.getLogger().info("Using vanilla recipe handling for clients");
                 break;
         }
     }
