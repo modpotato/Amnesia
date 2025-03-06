@@ -1,5 +1,5 @@
 # Amnesia
-
+![Amnesia Banner](banner/amnesia.png)
 Amnesia is a highly configurable Minecraft plugin for PaperMC and Folia servers that shuffles crafting recipes. It offers two distinct shuffling modes: random item replacement and recipe result swapping.
 
 ## Features
